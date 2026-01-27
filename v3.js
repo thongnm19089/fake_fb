@@ -150,6 +150,7 @@
     // HÀM 3: VẼ BIỂU ĐỒ
     // ==================================================================
     function rebuildCharts() {
+        if (!window.location.href.includes("professional_dashboard")) return;
         if (my_line_d && my_fill_d) {
             const svgs = document.querySelectorAll('svg');
             svgs.forEach(svg => {

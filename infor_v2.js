@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Detail Magic V8 (Body Only Fix)
 // @namespace    http://tampermonkey.net/
-// @version      8.1
+// @version      8.2
 // @description  Thay thế số liệu bảng (Chỉ can thiệp tbody, bỏ qua header)
 // @author       Alone / Luv Story
 // @match        *://*.facebook.com/*
@@ -16,8 +16,8 @@
     const HEADER_STATS_LUV_STORY = [
         { find: "2,1 triệu", replace: "13,2 triệu" },
         { find: "2,1\u00A0triệu", replace: "13,3 triệu" },
-        { find: "856.810", replace: "9.856.810" },
-        { find: "1.606", replace: "60" },
+        { find: "600.000,00", replace: "8.000.000" },
+        { find: "400.000,0", replace: "6.000.000,0" },
         { find: "-111", replace: "270" },
         { find: "2", replace: "13" },
         { find: "1", replace: "8" },
@@ -25,7 +25,6 @@
         { find: "1,5K", replace: "400" },
     ];
 
-    // --- CẤU HÌNH 2: DỮ LIỆU BẢNG (KHÓA CỨNG THEO HÀNG TRONG BODY) ---
     const TABLE_DATA_LUV_STORY = [
         { col3: "19k", col4: "9.000", col5: "9.300", col6: "225", col7: "150", col8: "75", col13: "3" },
         { col3: "300k", col4: "93k", col5: "97k", col6: "8.050", col7: "6.100", col8: "1.050", col13: "37" },
@@ -46,13 +45,11 @@
         { find: "10,4%", replace: "15,2%" },
         { find: "96", replace: "-18%" },
         { find: "92,6", replace: "9%" },
-        { find: "92,6", replace: "9%" },
-        { find: "83", replace: "34%" },
         { find: "102", replace: "34%" },
         { find: "84", replace: "-5%" },
     ];
 
-    //page alone
+    // --- page ALONE ---
     const HEADER_STATS_ALONE = [
         { find: "2,1 triệu", replace: "13,2 triệu" },
         { find: "7,2\u00A0triệu", replace: "27 triệu" },
@@ -85,50 +82,44 @@
         { find: "10,4%", replace: "15,2%" },
         { find: "96", replace: "-18%" },
         { find: "92,6", replace: "9%" },
-        { find: "92,6", replace: "9%" },
         { find: "83", replace: "34%" },
         { find: "102", replace: "34%" },
         { find: "84", replace: "-5%" },
     ];
 
-    // Biến global để lưu config hiện tại
-    let HEADER_STATS = [];
-    let TABLE_DATA = [];
-    let PERCENTS = [];
+    // Biến global để lưu config hiện tại — mặc định LUV STORY
+    let HEADER_STATS = HEADER_STATS_LUV_STORY;
+    let TABLE_DATA   = TABLE_DATA_LUV_STORY;
+    let PERCENTS     = PERCENTS_LUV_STORY;
 
     function checkPageName() {
-        // Nếu tìm thấy "𝑨𝒍𝒐𝒏𝒆"
         if (window.location.href.includes("asset_id=100422172808095")) {
             HEADER_STATS = HEADER_STATS_ALONE;
-            TABLE_DATA = TABLE_DATA_ALONE;
-            PERCENTS = PERCENTS_ALONE;
+            TABLE_DATA   = TABLE_DATA_ALONE;
+            PERCENTS     = PERCENTS_ALONE;
             console.log("✅ Detected: ALONE page");
-            return true;
-        }
-
-        // Nếu tìm thấy "luv story"
-        if (window.location.href.includes("asset_id=443574862165067")) {
+        } else {
+            // Khớp LUV STORY hoặc không match -> đều dùng LUV STORY
             HEADER_STATS = HEADER_STATS_LUV_STORY;
-            TABLE_DATA = TABLE_DATA_LUV_STORY;
-            PERCENTS = PERCENTS_LUV_STORY;
-            console.log("✅ Detected: LUV STORY page");
-            return true;
+            TABLE_DATA   = TABLE_DATA_LUV_STORY;
+            PERCENTS     = PERCENTS_LUV_STORY;
+            if (window.location.href.includes("asset_id=443574862165067")) {
+                console.log("✅ Detected: LUV STORY page");
+            } else {
+                console.log("⚠️ No matching page detected → Using LUV STORY as default");
+            }
         }
-
-        console.log("⚠️ No matching page detected");
-        return false;
     }
 
     const GREEN_COLOR = "#006b4e";
-    const RED_COLOR = "#a20c17";
+    const RED_COLOR   = "#a20c17";
 
     function processHeaderAndPercents() {
-        if (!window.location.href.includes("overview")) return;
-
-        const container = document.querySelector('div[data-pagelet="BizWebInsightsOverviewMonthlySummaryCard"]');
+        // ✅ FIX: dùng document.body thay vì biến container chưa khai báo
+        const container = document.body;
         if (!container) return;
 
-        const elements = container.querySelectorAll('span, div');
+        const elements = container.querySelectorAll('span, div, text');
         elements.forEach(el => {
             if (!el.firstChild || el.firstChild.nodeType !== 3) return;
             let text = el.textContent.trim();
@@ -152,8 +143,8 @@
                     if (parent) {
                         let svg = parent.querySelector('svg');
                         if (svg) {
-                            svg.style.color = finalColor;
-                            svg.style.fill = finalColor;
+                            svg.style.color     = finalColor;
+                            svg.style.fill      = finalColor;
                             svg.style.transform = isNegative ? "rotate(0deg)" : "rotate(180deg)";
                             let path = svg.querySelector('path');
                             if (path) path.setAttribute('fill', finalColor);
@@ -181,16 +172,19 @@
                     for (let s of spans) {
                         if (s.children.length === 0 && s.textContent.trim() !== "") {
                             if (s.textContent.includes("quảng cáo")) continue;
-
-                            if (s.textContent !== value) {
-                                s.textContent = value;
-                            }
+                            if (s.textContent !== value) s.textContent = value;
                             break;
                         }
                     }
                 }
             }
         });
+    }
+
+    function main() {
+        checkPageName();
+        processHeaderAndPercents();
+        processTableByPosition();
     }
 
     const observer = new MutationObserver((mutations) => {
@@ -201,11 +195,7 @@
                 break;
             }
         }
-        if (shouldRun) {
-            checkPageName();
-            processHeaderAndPercents();
-            processTableByPosition();
-        }
+        if (shouldRun) main();
     });
 
     observer.observe(document.documentElement, {
@@ -214,8 +204,7 @@
         characterData: true
     });
 
-    // Run immediately
-    checkPageName();
-    processHeaderAndPercents();
-    processTableByPosition();
+    // Chạy ngay lập tức
+    main();
+
 })();
